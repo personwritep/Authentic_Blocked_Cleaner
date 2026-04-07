@@ -184,8 +184,8 @@ function file_act(){
             }
             else{
                 alert(
-                    "❌　Authentic Blocked Cleaner の Exportファイルではありません\n"+
-                    "　　 Importファイルは「ABC.json」の名前です"); }
+                    "❌　Authentic Blocked Cleaner の Backupファイルではありません\n"+
+                    "　　 Importするファイルは「ABC.json」の名前です"); }
 
 
             setTimeout(()=>{
@@ -199,7 +199,7 @@ function file_act(){
 
     if(exp){
         exp.onclick=function(){
-                let write_json=JSON.stringify(readers); //「フォロワー履歴」を書出す
+                let write_json=JSON.stringify(readers); //「ブロックしたブログID」を書出す
                 let blob=new Blob([write_json], {type: 'application/json'});
 
                 let a_elem=document.createElement('a');
