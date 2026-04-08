@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        Authentic Blocked Cleaner
 // @namespace        http://blog.ameba.jp
-// @version        0.1
+// @version        0.2
 // @description        制限したブログのリストから退会ブログを排除する
 // @author        Ameba Blog User
 // @match        https://ameblo.jp/*
@@ -15,6 +15,7 @@
 
 
 let readers=[]; // ブロックしたユーザーIDデータ
+let b_mode;
 
 
 if(location.hostname=='blog.ameba.jp'){
@@ -40,7 +41,7 @@ function main_a(){
         let href_row=block_item[k].querySelector('a').getAttribute('href');
         let id=href_row.split('/')[3];
         if(id){
-            readers.push(id); }}
+            readers.push([id, 0]); }}
 
     disp_panel(0);
     file_act();
@@ -60,11 +61,12 @@ if(location.hostname=='ameblo.jp'){
 
 function main_b(){
     if(location.hostname=='ameblo.jp'){
+        b_mode=0;
         disp_panel(1);
         file_act();
         unsubscribe();
         close();
-   }
+    }
 
 } // main_b()
 
@@ -95,20 +97,22 @@ function disp_panel(n){
         SVG_h +'</a>';
     if(n==1){
         panel+=
-        '<input class="import sw_abc" type="submit" value="Read Blocked ID Backup">'+
-        '<input class="file_input" type="file">'+
-        '<span class="data_disp">　</span>'+
-        '<input class="check sw_abc" type="submit" value="Check">'; }
+            '<input class="import sw_abc" type="submit" value="Read Blocked ID Backup">'+
+            '<input class="file_input" type="file">'+
+            '<span class="data_disp">　</span>'+
+            '<input class="check sw_abc" type="submit" value="Check">'; }
     if(n==0){
         panel+=
-            '<input class="export sw_abc" type="submit" value="Blocked ID Backup">'; }
+            '<input class="export sw_abc" type="submit" value="Blocked ID Backup">'+
+            '<input class="import_r sw_abc" type="submit" value="Read Result">'+
+            '<input class="file_input" type="file">'; }
     panel+=
         '<input class="close sw_abc" type="submit" value="✖">'+
         '</div>';
     if(n==1){
         panel+=
-        '<div class="ABC2">'+
-        '<ul></ul></div>'; }
+            '<div class="ABC2">'+
+            '<ul></ul></div>'; }
     panel+=
         '</div>'+
         '<style>'+
@@ -123,13 +127,14 @@ function disp_panel(n){
         'border: 1px solid #999; border-radius: 2px; background: #f0f0f0; } '+
         '#panel_ABC .help_ABC { margin: 0 6px -5px 0; } '+
         '#panel_ABC .import { margin: 0 10px; } '+
+        '#panel_ABC .import_r { margin: 0 20px; } '+
         '#panel_ABC .file_input { display: none; } '+
         '#panel_ABC .data_disp { display: inline-block; width: 125px; height: 28px; '+
         'padding: 6px 6px 0; margin-right: 10px; box-sizing: border-box; vertical-align: -8px; '+
         'font: normal 16px/16px Meiryo; border: 1px solid #ccc; color: #000; background: #fff; '+
         'overflow-x: hidden; white-space: nowrap; text-overflow: ellipsis; } '+
-        '#panel_ABC .check { margin: 0 20px; } '+
-        '#panel_ABC .export { margin: 0 30px 0 10px; } '+
+        '#panel_ABC .check, #panel_ABC .result { margin: 0 20px; } '+
+        '#panel_ABC .export { margin: 0 10px; } '+
 
         '#panel_ABC .ABC2 { margin: 12px 0; height: calc(100vh - 300px); overflow-y: scroll; '+
         'font: normal 16px Meiryo; color: #000; background: #fff; } '+
@@ -150,6 +155,7 @@ function disp_panel(n){
 
 function file_act(){
     let imp=document.querySelector('#panel_ABC .import');
+    let imp_r=document.querySelector('#panel_ABC .import_r');
     let file_input=document.querySelector('#panel_ABC .file_input');
     let exp=document.querySelector('#panel_ABC .export');
 
@@ -199,23 +205,70 @@ function file_act(){
 
     if(exp){
         exp.onclick=function(){
-                let write_json=JSON.stringify(readers); //「ブロックしたブログID」を書出す
-                let blob=new Blob([write_json], {type: 'application/json'});
+            let write_json=JSON.stringify(readers); //「ブロックしたブログID」を書出す
+            let blob=new Blob([write_json], {type: 'application/json'});
 
-                let a_elem=document.createElement('a');
-                a_elem.href=URL.createObjectURL(blob);
-                a_elem.download='ABC.json'; // 保存ファイル名
-                a_elem.click();
-                URL.revokeObjectURL(a_elem.href);
-          }
+            let a_elem=document.createElement('a');
+            a_elem.href=URL.createObjectURL(blob);
+            a_elem.download='ABC.json'; // 保存ファイル名
+            a_elem.click();
+            URL.revokeObjectURL(a_elem.href);
+        }
 
     } // if(exp)
+
+
+    if(imp_r && file_input){
+        imp_r.onclick=function(event){
+            file_input.click(); }
+
+        file_input.addEventListener('change' , function(){
+            if(!(file_input.value)) return; // ファイルが選択されない場合
+            let file_list=file_input.files;
+            if(!file_list) return; // ファイルリストが選択されない場合
+            let file=file_list[0];
+            if(!file) return; // ファイルが無い場合
+
+            if(file.name.startsWith('ABC_result')){ // ファイル名の確認
+                let file_reader=new FileReader();
+                file_reader.readAsText(file);
+                file_reader.onload=function(){
+
+                    let data_in=JSON.parse(file_reader.result);
+                    readers=data_in;
+
+                    setTimeout(()=>{
+                        let panel=document.querySelector('#modal_ABC');
+                        if(panel){
+                            panel.remove(); }
+                        disp_result();
+                    }, 200);
+                }
+            }
+            else{
+                alert(
+                    "❌　Authentic Blocked Cleaner の Resultファイルではありません\n"+
+                    "　　 読み込むファイルは「ABC_result.json」の名前です"); }
+
+
+            setTimeout(()=>{
+                this.value=null; // 同ファイルの再読込みを可能にする
+            }, 1000);
+        });
+
+    } // if(imp_r && file_input)
 
 } // file_act()
 
 
 
 function disp_list(){
+    if(b_mode!=0){
+        b_mode=0;
+        let check=document.querySelector('#panel_ABC .check');
+        if(check){
+            check.value='Check'; }}
+
     let ul=document.querySelector('#panel_ABC .ABC2 ul');
     let li='';
     if(ul){
@@ -223,7 +276,7 @@ function disp_list(){
             li+=
                 '<li>'+
                 '<span class="dn">'+ (k/1+1) +'</span>'+
-                '<span class="d0">'+ readers[k] +'</span>';
+                '<span class="d0">'+ readers[k][0] +'</span>';
             li+='</li>';
         }
 
@@ -233,6 +286,21 @@ function disp_list(){
 
     }
 } // disp_list()
+
+
+
+function disp_result(){
+    let block_item=document.querySelectorAll('.BlogWebBlock_item__2YbpR');
+    for(let k=0; k<block_item.length; k++){
+        let href_row=block_item[k].querySelector('a').getAttribute('href');
+        let id=href_row.split('/')[3];
+        if(id){
+            for(let i=0; i<readers.length; i++){
+                if(readers[i][0]==id && readers[i][1]==1){
+                    block_item[k].style.background='#c5e3fc';
+                    break; }}}}
+
+} // disp_result()
 
 
 
@@ -246,29 +314,64 @@ function check_li(){
 function unsubscribe(){
     let check=document.querySelector('#panel_ABC .check');
     if(check){
+        if(b_mode==0){
+            check.value='Check'; }
+        else{
+            check.value='Result'; }
+
+
         check.onclick=function(){
             if(check_li()){
-                let panel_li=document.querySelectorAll('#panel_ABC li');
-
-                let count=0; // チェックしたIDのカウント
-                let count_d=0; // 退会者のカウント
-                for(let i=0; i<panel_li.length; i++){
-                    let id=panel_li[i].querySelector('.d0').textContent;
-                    count+=1;
-
-                    if(check_id(id)){
-                        panel_li[i].style.background='#2196f395';
-                        count_d+=1; }
-                    }
-
-                alert(
-                    '退会者を調査しました \n'+
-                    '　　　▶ 調査した件数: '+ count +' 件\n'+
-                    '　　　▶ 退会ブログの件数: '+ count_d +' 件' );
-
-            }}
+                if(b_mode==0){
+                    live_search(); }
+                else{
+                    result_backup(); }}}
 
     } // if(check)
+
+
+    function live_search(){
+        let panel_li=document.querySelectorAll('#panel_ABC li');
+
+        let count=0; // チェックしたIDのカウント
+        let count_d=0; // 退会者のカウント
+        for(let i=0; i<panel_li.length; i++){
+            let id=panel_li[i].querySelector('.d0').textContent;
+            count+=1;
+
+            if(check_id(id)){
+                panel_li[i].style.background='#2196f395';
+                count_d+=1;
+                for(let k=0; k<readers.length; k++){
+                    if(id==readers[k][0]){
+                        readers[k][1]='1'; // 退会者のフラグ
+                        break; }}}}
+
+        alert(
+            '退会者を調査しました \n'+
+            '　　　▶ 調査した件数: '+ count +' 件\n'+
+            '　　　▶ 退会ブログの件数: '+ count_d +' 件' );
+
+        if(count_d>0){
+            b_mode=1;
+            unsubscribe(); }
+
+    } // live_search()
+
+
+
+    function result_backup(){
+        let write_json=JSON.stringify(readers); // チェック済の「ブログID」を書出す
+        let blob=new Blob([write_json], {type: 'application/json'});
+
+        let a_elem=document.createElement('a');
+        a_elem.href=URL.createObjectURL(blob);
+        a_elem.download='ABC_result.json'; // 保存ファイル名
+        a_elem.click();
+        URL.revokeObjectURL(a_elem.href);
+
+    } // result_backup()
+
 
 
     function check_id(id){
@@ -284,6 +387,7 @@ function unsubscribe(){
             return xhr.status; }}
 
 } // unsubscribe()
+
 
 
 
