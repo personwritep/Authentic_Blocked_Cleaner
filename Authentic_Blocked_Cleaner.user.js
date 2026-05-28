@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        Authentic Blocked Cleaner
 // @namespace        http://blog.ameba.jp
-// @version        0.2
+// @version        0.3
 // @description        制限したブログのリストから退会ブログを排除する
 // @author        Ameba Blog User
 // @match        https://ameblo.jp/*
@@ -31,17 +31,9 @@ function main_a(){
         retry++;
         if(retry>10){ // リトライ制限 10回 2secまで
             clearInterval(interval); }
-        let target=document.querySelector('.BlogWebBlock_next-button__OfEW6 button');
+        let target=document.querySelector('.BlogWebBlock-module__6DSusa__next-button button');
         if(target){
             target.click(); }}
-
-
-    let block_item=document.querySelectorAll('.BlogWebBlock_item__2YbpR');
-    for(let k=0; k<block_item.length; k++){
-        let href_row=block_item[k].querySelector('a').getAttribute('href');
-        let id=href_row.split('/')[3];
-        if(id){
-            readers.push([id, 0]); }}
 
     disp_panel(0);
     file_act();
@@ -205,6 +197,15 @@ function file_act(){
 
     if(exp){
         exp.onclick=function(){
+            readers=[]; // 配列を初期化
+
+            let block_item=document.querySelectorAll('.BlogWebBlock-module__6DSusa__item');
+            for(let k=0; k<block_item.length; k++){
+                let href_row=block_item[k].querySelector('a').getAttribute('href');
+                let id=href_row.split('/')[3];
+                if(id){
+                    readers.push([id, 0]); }}
+
             let write_json=JSON.stringify(readers); //「ブロックしたブログID」を書出す
             let blob=new Blob([write_json], {type: 'application/json'});
 
@@ -290,7 +291,7 @@ function disp_list(){
 
 
 function disp_result(){
-    let block_item=document.querySelectorAll('.BlogWebBlock_item__2YbpR');
+    let block_item=document.querySelectorAll('.BlogWebBlock-module__6DSusa__item');
     for(let k=0; k<block_item.length; k++){
         let href_row=block_item[k].querySelector('a').getAttribute('href');
         let id=href_row.split('/')[3];
