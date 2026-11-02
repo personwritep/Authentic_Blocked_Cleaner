@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        Authentic Blocked Cleaner
 // @namespace        http://blog.ameba.jp
-// @version        0.3
+// @version        0.4
 // @description        制限したブログのリストから退会ブログを排除する
 // @author        Ameba Blog User
 // @match        https://ameblo.jp/*
@@ -31,7 +31,7 @@ function main_a(){
         retry++;
         if(retry>10){ // リトライ制限 10回 2secまで
             clearInterval(interval); }
-        let target=document.querySelector('.BlogWebBlock-module__6DSusa__next-button button');
+        let target=document.querySelector('._6DSusa_next-button button');
         if(target){
             target.click(); }}
 
@@ -199,7 +199,7 @@ function file_act(){
         exp.onclick=function(){
             readers=[]; // 配列を初期化
 
-            let block_item=document.querySelectorAll('.BlogWebBlock-module__6DSusa__item');
+            let block_item=document.querySelectorAll('._6DSusa_item');
             for(let k=0; k<block_item.length; k++){
                 let href_row=block_item[k].querySelector('a').getAttribute('href');
                 let id=href_row.split('/')[3];
@@ -291,7 +291,7 @@ function disp_list(){
 
 
 function disp_result(){
-    let block_item=document.querySelectorAll('.BlogWebBlock-module__6DSusa__item');
+    let block_item=document.querySelectorAll('._6DSusa_item');
     for(let k=0; k<block_item.length; k++){
         let href_row=block_item[k].querySelector('a').getAttribute('href');
         let id=href_row.split('/')[3];
