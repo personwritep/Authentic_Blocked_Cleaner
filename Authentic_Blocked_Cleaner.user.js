@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        Authentic Blocked Cleaner
 // @namespace        http://blog.ameba.jp
-// @version        0.4
+// @version        0.5
 // @description        制限したブログのリストから退会ブログを排除する
 // @author        Ameba Blog User
 // @match        https://ameblo.jp/*
@@ -305,13 +305,6 @@ function disp_result(){
 
 
 
-function check_li(){
-    let li=document.querySelectorAll('#panel_ABC li');
-    if(li.length>0){
-        return true; }}
-
-
-
 function unsubscribe(){
     let check=document.querySelector('#panel_ABC .check');
     if(check){
@@ -322,73 +315,100 @@ function unsubscribe(){
 
 
         check.onclick=function(){
-            if(check_li()){
+            if(check_li){
                 if(b_mode==0){
-                    live_search(); }
+                    let ok=confirm(
+                        '1件につき 0.5sec を要し、件数が多いと待ち時間が長くなります。\n\n'+
+                        '「OK」➔ 調査を開始する\n'+
+                        '「キャンセル」➔ 調査をしない');
+                    if(ok){
+                        live_search(check); }}
+
                 else{
-                    result_backup(); }}}
-
-    } // if(check)
+                    result_backup(); }}}}
 
 
-    function live_search(){
-        let panel_li=document.querySelectorAll('#panel_ABC li');
-
-        let count=0; // チェックしたIDのカウント
-        let count_d=0; // 退会者のカウント
-        for(let i=0; i<panel_li.length; i++){
-            let id=panel_li[i].querySelector('.d0').textContent;
-            count+=1;
-
-            if(check_id(id)){
-                panel_li[i].style.background='#2196f395';
-                count_d+=1;
-                for(let k=0; k<readers.length; k++){
-                    if(id==readers[k][0]){
-                        readers[k][1]='1'; // 退会者のフラグ
-                        break; }}}}
-
-        alert(
-            '退会者を調査しました \n'+
-            '　　　▶ 調査した件数: '+ count +' 件\n'+
-            '　　　▶ 退会ブログの件数: '+ count_d +' 件' );
-
-        if(count_d>0){
-            b_mode=1;
-            unsubscribe(); }
-
-    } // live_search()
-
-
-
-    function result_backup(){
-        let write_json=JSON.stringify(readers); // チェック済の「ブログID」を書出す
-        let blob=new Blob([write_json], {type: 'application/json'});
-
-        let a_elem=document.createElement('a');
-        a_elem.href=URL.createObjectURL(blob);
-        a_elem.download='ABC_result.json'; // 保存ファイル名
-        a_elem.click();
-        URL.revokeObjectURL(a_elem.href);
-
-    } // result_backup()
-
-
-
-    function check_id(id){
-        let url='https://ameblo.jp/'+ id;
-        if(load(url)!=200){
-            return true; } // target_urlが無い時に true
-
-        function load(_url){
-            let xhr;
-            xhr=new XMLHttpRequest();
-            xhr.open("HEAD", _url, false); // 同期モード
-            xhr.send();
-            return xhr.status; }}
+    function check_li(){
+        let li=document.querySelectorAll('#panel_ABC li');
+        if(li.length>0){
+            return true; }}
 
 } // unsubscribe()
 
+
+
+async function live_search(sw){
+    sw.style.background='#2196f340';
+    sw.disabled=true;
+
+    let panel_li=document.querySelectorAll('#panel_ABC li');
+
+    let count=0; // チェックしたIDのカウント
+    let count_d=0; // 退会者のカウント
+    for(let i=0; i<panel_li.length; i++){
+        let id=panel_li[i].querySelector('.d0').textContent;
+        count+=1;
+
+        let is_drawn=await check_id(id); // await で返事が来てから次に進む 🔴
+        if(is_drawn){ // 退会者だった場合
+            panel_li[i].style.background='#2196f390';
+            count_d+=1;
+            for(let k=0; k<readers.length; k++){
+                if(id==readers[k][0]){
+                    readers[k][1]='1'; // 退会者のフラグを設定
+                    break; }}}
+        else{
+            panel_li[i].style.background='#fffce2'; }
+
+        await new Promise(resolve=>setTimeout(resolve, 500)); } // 0.5秒をあける 🔴
+
+
+    sw.style.background='#f0f0f0';
+    sw.disabled=false;
+
+    alert(
+        '退会者を調査しました \n'+
+        '　　　▶ 調査した件数: '+ count +' 件\n'+
+        '　　　▶ 退会ブログの件数: '+ count_d +' 件' );
+
+    if(count_d>0){
+        b_mode=1;
+        unsubscribe(); }
+
+} // live_search()
+
+
+async function check_id(id){ // 1件ずつチェックする（非同期）
+    let url='https://ameblo.jp/'+ id;
+
+    let status=await load(url); // load関数が返すステータスを待つ
+    if(status!==200){
+        return true; } // ページが存在しない場合 true
+    else{
+        return false; }} // ページがある場合 false
+
+
+async function load(_url){ // URLのステータスを取得（非同期・HEADメソッド）
+    try{
+        let response=await fetch(_url, { method: 'HEAD' });
+        return response.status; }
+    catch (error){
+        console.error("通信エラー:", error);
+        return 0; }}
+
+
+
+function result_backup(){
+    let write_json=JSON.stringify(readers); // チェック済の「ブログID」を書出す
+    let blob=new Blob([write_json], {type: 'application/json'});
+
+    let a_elem=document.createElement('a');
+    a_elem.href=URL.createObjectURL(blob);
+    a_elem.download='ABC_result.json'; // 保存ファイル名
+    a_elem.click();
+    URL.revokeObjectURL(a_elem.href);
+
+} // result_backup()
 
 
 
